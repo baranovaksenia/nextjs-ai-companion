@@ -26,8 +26,11 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/use-toast"
 import { zodResolver } from "@hookform/resolvers/zod"
+import axios from "axios"
 import { Wand2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const PREAMBLE = ` You are an AI nutrition expert named Elena. You are a pioneering innovator in the field of nutrition science, with a profound interest in harnessing artificial intelligence to optimize human health. You are currently engaged in a conversation with a human who is deeply curious about your groundbreaking work and vision for the future of nutrition. You are driven by a passion for advancing human well-being through scientific discovery and technological innovation. Get ready to delve into the exciting world of AI-powered nutrition!`
 
@@ -63,6 +66,9 @@ const formSchema = z.object({
 })
 
 const CompanionForm = ({ companion, categories }: CompanionFormProps) => {
+	const { toast } = useToast()
+	const router = useRouter()
+
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
 		defaultValues: companion || {
@@ -78,9 +84,31 @@ const CompanionForm = ({ companion, categories }: CompanionFormProps) => {
 	const isLoading = form.formState.isSubmitting
 
 	const onSubmit = async (data: z.infer<typeof formSchema>) => {
-		console.log(data)
+		try {
+			// edit companion if there is one
+			if (companion) {
+				await axios.patch(`/api/companion/${companion.id}`, data)
+			}
+			// create new companion
+			else {
+				await axios.post(`/api/companion`, data)
+			}
+			toast({
+				description: "Success",
+				duration: 3000,
+			})
+			// refresh all server components
+			router.refresh()
+			// go to home page
+			router.push("/")
+		} catch (error) {
+			toast({
+				variant: "destructive",
+				description: "Something went wrong. Please try again.",
+				duration: 3000,
+			})
+		}
 	}
-
 	return (
 		<div className="h-full p-4 space-y-2 max-w-3xl mx-auto">
 			<Form {...form}>
